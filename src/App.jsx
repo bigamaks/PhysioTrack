@@ -10,8 +10,21 @@ import Signup from './pages/auth/Signup'
 import TherapistDashboard from './pages/therapist/Dashboard'
 import Patients from './pages/therapist/Patients'
 
+import TherapistAppointments from './pages/therapist/Appointments';
+import Assessments from './pages/therapist/Assessments';
+import Reports from './pages/therapist/Reports';
+import PatientProfile from './pages/therapist/PatientProfile'
+import AddPatient from './pages/therapist/AddPatient';
+import Progress from './pages/therapist/Progress'
+import Settings from './pages/therapist/Settings'
+
+
 import PatientDashboard from './pages/patient/Dashboard'
 import MyRecovery from './pages/patient/MyRecovery'
+import Exercises from './pages/patient/Exercises'
+import Symptoms from './pages/patient/Symptoms'
+import PatientAppointments from './pages/patient/Appointments';    
+import Profile from './pages/patient/Profile';
 
 import AdminDashboard from './pages/admin/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute'
@@ -31,9 +44,18 @@ function App() {
             <TherapistLayout />
           </ProtectedRoute>
           
+          
           }>
           <Route path="dashboard" element={<TherapistDashboard />} />
           <Route path="patients" element={<Patients />} />
+          <Route path="patients/:id" element={<PatientProfile />} />
+          <Route path="appointments" element={<TherapistAppointments />} />
+          <Route path="assessments" element={<Assessments />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="patients/:id" element={<PatientProfile />} />
+          <Route path="patients/add" element={<AddPatient />} />
+          <Route path="progress" element={<Progress />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
 
         <Route path="/patient" element={
@@ -43,6 +65,10 @@ function App() {
           }>
           <Route path="dashboard" element={<PatientDashboard />} />
           <Route path="recovery" element={<MyRecovery />} />
+          <Route path="exercises" element={<Exercises />} />
+          <Route path="symptoms" element={<Symptoms />} />
+          <Route path="appointments" element={<PatientAppointments />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
 
         <Route path="/admin" element={

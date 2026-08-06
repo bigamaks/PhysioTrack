@@ -1,19 +1,47 @@
-import { Search, ChevronRight, ChevronLeft, UserPlus, Users, UserCheck, CalendarPlus, PackageCheck, Eye, MoreHorizontal, SlidersHorizontal, RotateCcw, Download } from 'lucide-react';
+import {
+  Search,
+  ChevronRight,
+  ChevronLeft,
+  UserPlus,
+  Users,
+  UserCheck,
+  CalendarPlus,
+  PackageCheck,
+  Eye,
+  MoreHorizontal,
+  SlidersHorizontal,
+  RotateCcw,
+  Download,
+} from 'lucide-react';
 
-import {useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { Link } from 'react-router-dom';
 
-
-
-function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub, subColor }) {
+function StatCard({
+  icon: Icon,
+  iconBg,
+  iconColor,
+  label,
+  value,
+  sub,
+  subColor,
+}) {
   return (
     <div className="flex-1 rounded-xl p-4 bg-white border border-[#E4E9E8]">
-      <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: iconBg }}>
+      <div
+        className="w-10 h-10 rounded-full flex items-center justify-center mb-3"
+        style={{ background: iconBg }}
+      >
         <Icon size={18} color={iconColor} strokeWidth={2} />
       </div>
       <p className="text-xs mb-1 text-muted">{label}</p>
       <p className="text-2xl font-mono font-semibold text-ink">{value}</p>
-      {sub && <p className="text-xs mt-1" style={{ color: subColor }}>{sub}</p>}
+      {sub && (
+        <p className="text-xs mt-1" style={{ color: subColor }}>
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
@@ -26,7 +54,10 @@ function StatusPill({ status }) {
   };
   const s = map[status] || map.Active;
   return (
-    <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: s.bg, color: s.text }}>
+    <span
+      className="text-xs px-2.5 py-1 rounded-full font-medium"
+      style={{ background: s.bg, color: s.text }}
+    >
       {status}
     </span>
   );
@@ -34,7 +65,10 @@ function StatusPill({ status }) {
 
 function Avatar({ initials, tint }) {
   return (
-    <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs text-white font-semibold shrink-0" style={{ background: tint }}>
+    <div
+      className="w-9 h-9 rounded-full flex items-center justify-center text-xs text-white font-semibold shrink-0"
+      style={{ background: tint }}
+    >
       {initials}
     </div>
   );
@@ -65,17 +99,11 @@ function FilterChip({ label }) {
 //   { name: 'Tunde Ojo', age: 50, gender: 'Male', id: 'PT-0007', phone: '+234 807 890 1234', condition: 'Hip pain', status: 'Discharged', lastVisit: 'Jun 28, 2026', next: '—', tint: '#5C6B6E' },
 // ];
 
-
-
-
 export default function Patients() {
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const [patients, setPatients] = useState([]);
-const [loading, setLoading] = useState(true);
-
-
-
-    useEffect(() => {
+  useEffect(() => {
     async function fetchPatients() {
       const { data, error } = await supabase.from('patients').select('*');
       if (error) {
@@ -93,19 +121,61 @@ const [loading, setLoading] = useState(true);
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display font-semibold text-2xl text-ink">Patients</h1>
-          <p className="text-sm mt-1 text-muted">Manage patient records and track their treatment journey.</p>
+          <h1 className="font-display font-semibold text-2xl text-ink">
+            Patients
+          </h1>
+          <p className="text-sm mt-1 text-muted">
+            Manage patient records and track their treatment journey.
+          </p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm text-white font-medium bg-primary">
-          <UserPlus size={16} /> Add new patient
+          {/* <UserPlus size={16} /> Add new patient */}
+          <Link
+            to="/therapist/patients/add"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm text-white font-medium bg-primary"
+          >
+            <UserPlus size={16} /> Add new patient
+          </Link>
         </button>
       </div>
 
       <div className="flex gap-4">
-        <StatCard icon={Users} iconBg="#E1F0EA" iconColor="#1F4E4A" label="Total patients" value="248" sub="↑ 12% from last month" subColor="#1F4E4A" />
-        <StatCard icon={UserCheck} iconBg="#EAF1F0" iconColor="#2F6E67" label="Active patients" value="189" sub="↑ 8% from last month" subColor="#2F6E67" />
-        <StatCard icon={CalendarPlus} iconBg="#FBEEE0" iconColor="#E2984F" label="New this month" value="18" sub="↑ 5% from last month" subColor="#E2984F" />
-        <StatCard icon={PackageCheck} iconBg="#F1F1F0" iconColor="#5C6B6E" label="Discharged" value="59" sub="↑ 10% from last month" subColor="#5C6B6E" />
+        <StatCard
+          icon={Users}
+          iconBg="#E1F0EA"
+          iconColor="#1F4E4A"
+          label="Total patients"
+          value="248"
+          sub="↑ 12% from last month"
+          subColor="#1F4E4A"
+        />
+        <StatCard
+          icon={UserCheck}
+          iconBg="#EAF1F0"
+          iconColor="#2F6E67"
+          label="Active patients"
+          value="189"
+          sub="↑ 8% from last month"
+          subColor="#2F6E67"
+        />
+        <StatCard
+          icon={CalendarPlus}
+          iconBg="#FBEEE0"
+          iconColor="#E2984F"
+          label="New this month"
+          value="18"
+          sub="↑ 5% from last month"
+          subColor="#E2984F"
+        />
+        <StatCard
+          icon={PackageCheck}
+          iconBg="#F1F1F0"
+          iconColor="#5C6B6E"
+          label="Discharged"
+          value="59"
+          sub="↑ 10% from last month"
+          subColor="#5C6B6E"
+        />
       </div>
 
       <div className="flex items-center gap-3 rounded-xl p-3 bg-white border border-[#E4E9E8]">
@@ -121,7 +191,10 @@ const [loading, setLoading] = useState(true);
         <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted cursor-pointer">
           <RotateCcw size={14} /> Reset
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer" style={{ background: '#E1F0EA', color: '#1F4E4A' }}>
+        <div
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer"
+          style={{ background: '#E1F0EA', color: '#1F4E4A' }}
+        >
           <Download size={14} /> Export
         </div>
       </div>
@@ -130,8 +203,22 @@ const [loading, setLoading] = useState(true);
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#E4E9E8]">
-              {['Patient', 'ID', 'Contact', 'Condition', 'Status', 'Last visit', 'Next appointment', 'Actions'].map((h, i) => (
-                <th key={i} className="text-left px-4 py-3 text-xs text-muted font-medium">{h}</th>
+              {[
+                'Patient',
+                'ID',
+                'Contact',
+                'Condition',
+                'Status',
+                'Last visit',
+                'Next appointment',
+                'Actions',
+              ].map((h, i) => (
+                <th
+                  key={i}
+                  className="text-left px-4 py-3 text-xs text-muted font-medium"
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -140,23 +227,51 @@ const [loading, setLoading] = useState(true);
               <tr key={i} className={i > 0 ? 'border-t border-[#E4E9E8]' : ''}>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                   <Avatar initials={p.name.split(' ').map(n => n[0]).join('')} tint={getTint(p.name)} />
+                    <Avatar
+                      initials={p.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')}
+                      tint={getTint(p.name)}
+                    />
                     <div>
                       <p className="text-ink font-medium">{p.name}</p>
-                      <p className="text-xs text-muted">{p.age} · {p.gender}</p>
+                      <p className="text-xs text-muted">
+                        {p.age} · {p.gender}
+                      </p>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-muted font-mono text-[13px]">{p.id}</td>
+                <td className="px-4 py-3 text-muted font-mono text-[13px]">
+                  {p.id}
+                </td>
                 <td className="px-4 py-3 text-muted text-[13px]">{p.phone}</td>
                 <td className="px-4 py-3 text-muted">{p.condition}</td>
-                <td className="px-4 py-3"><StatusPill status={p.status} /></td>
-                <td className="px-4 py-3 text-muted font-mono text-[13px]">{p.last_visit}</td>
-                <td className="px-4 py-3 text-[13px]" style={{ color: p.next_appointment === '—' ? '#5C6B6E' : '#2F6E67' }}>{p.next_appointment}</td>
+                <td className="px-4 py-3">
+                  <StatusPill status={p.status} />
+                </td>
+                <td className="px-4 py-3 text-muted font-mono text-[13px]">
+                  {p.last_visit}
+                </td>
+                <td
+                  className="px-4 py-3 text-[13px]"
+                  style={{
+                    color: p.next_appointment === '—' ? '#5C6B6E' : '#2F6E67',
+                  }}
+                >
+                  {p.next_appointment}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer border border-[#E4E9E8]">
-                      <Eye size={14} className="text-muted" />
+                      {/* <Eye size={14} className="text-muted" /> */}
+
+                      <Link
+                        to={`/therapist/patients/${p.id}`}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]"
+                      >
+                        <Eye size={14} className="text-muted" />
+                      </Link>
                     </div>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer border border-[#E4E9E8]">
                       <MoreHorizontal size={14} className="text-muted" />
@@ -172,13 +287,24 @@ const [loading, setLoading] = useState(true);
       <div className="flex items-center justify-between text-sm text-muted">
         <span>Showing 1 to 7 of 248 patients</span>
         <div className="flex items-center gap-1.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]"><ChevronLeft size={14} /></div>
-          {[1, 2, 3].map(n => (
-            <div key={n} className={`w-8 h-8 rounded-lg flex items-center justify-center ${n === 1 ? 'bg-primary text-white' : 'border border-[#E4E9E8] text-ink'}`}>{n}</div>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]">
+            <ChevronLeft size={14} />
+          </div>
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center ${n === 1 ? 'bg-primary text-white' : 'border border-[#E4E9E8] text-ink'}`}
+            >
+              {n}
+            </div>
           ))}
           <span>...</span>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]">36</div>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]"><ChevronRight size={14} /></div>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]">
+            36
+          </div>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]">
+            <ChevronRight size={14} />
+          </div>
         </div>
       </div>
     </div>

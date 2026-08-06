@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { Home, Users, ClipboardList, Calendar, FileText, Settings } from 'lucide-react';
+import { Home, Users, ClipboardList, Calendar, FileText, Settings, UserPlus, TrendingUp } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
 
@@ -10,6 +10,9 @@ const links = [
   { to: '/therapist/appointments', icon: Calendar, label: 'Appointments' },
   { to: '/therapist/reports', icon: FileText, label: 'Reports' },
   { to: '/therapist/settings', icon: Settings, label: 'Settings' },
+  { to: '/therapist/patients/add', icon: UserPlus, label: 'Add patient' }, // optional, or keep as a button only
+{ to: '/therapist/progress', icon: TrendingUp, label: 'Progress' },
+{ to: '/therapist/settings', icon: Settings, label: 'Settings' },
 ];
 
 export default function TherapistLayout() {

@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { Home, Activity, Calendar } from 'lucide-react';
+import { Home, Activity, Calendar, Footprints, User } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Navbar from '../components/layout/Navbar';
 
@@ -7,6 +7,9 @@ const links = [
   { to: '/patient/dashboard', icon: Home, label: 'Dashboard' },
   { to: '/patient/recovery', icon: Activity, label: 'My recovery' },
   { to: '/patient/appointments', icon: Calendar, label: 'Appointments' },
+    { to: '/patient/exercises', icon: Footprints, label: 'Exercises' },
+    { to: '/patient/symptoms', icon: Activity, label: 'Symptoms' },
+    { to: '/patient/profile', icon: User, label: 'Profile' },
 ];
 
 export default function PatientLayout() {
