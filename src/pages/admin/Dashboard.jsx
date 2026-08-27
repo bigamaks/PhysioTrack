@@ -1,10 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  Users,
-  UserCog,
-  Calendar,
-  Activity,
-} from 'lucide-react';
+import { Users, UserCog, Calendar, Activity } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import StatCard from '../../components/dashboard/StatCard';
 import { C } from '../../components/dashboard/colors';
@@ -25,9 +20,7 @@ export default function Dashboard() {
     async function fetchDashboardData() {
       setLoading(true);
 
-      const today = new Date()
-        .toISOString()
-        .split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
 
       const [
         patientsResult,
@@ -55,12 +48,16 @@ export default function Dashboard() {
 
         // Today's appointments
         supabase
-          .from('appointments')
-          .select('*')
-          .eq('date', today)
-          .order('time', {
-            ascending: true,
-          }),
+         .from('appointments')
+  .select(`
+    *,
+    patients (
+      id,
+      name
+    )
+  `)
+  .eq('date', today)
+  .order('time', { ascending: true }),
 
         // Active care episodes
         supabase
@@ -71,7 +68,7 @@ export default function Dashboard() {
           })
           .eq('status', 'active'),
       ]);
-
+      console.log('All appointments:', appointmentsResult);
       console.log('Admin dashboard data:', {
         patientsResult,
         therapistsResult,
@@ -82,16 +79,12 @@ export default function Dashboard() {
       setStats({
         totalPatients: patientsResult.count || 0,
         totalTherapists: therapistsResult.count || 0,
-        todayAppointments:
-          appointmentsResult.data?.length || 0,
+        todayAppointments: appointmentsResult.data?.length || 0,
         activeEpisodes: episodesResult.count || 0,
       });
 
       if (appointmentsResult.error) {
-        console.error(
-          'Error fetching appointments:',
-          appointmentsResult.error
-        );
+        console.error('Error fetching appointments:', appointmentsResult.error);
 
         setAppointments([]);
         setLoading(false);
@@ -99,65 +92,41 @@ export default function Dashboard() {
       }
 
       // Get patient and therapist IDs
-      const patientIds = [
-        ...new Set(
-          (appointmentsResult.data || [])
-            .map((appointment) => appointment.patient_id)
-            .filter(Boolean)
-        ),
-      ];
+// Get therapist IDs
+const therapistIds = [
+  ...new Set(
+    (appointmentsResult.data || [])
+      .map((appointment) => appointment.therapist_id)
+      .filter(Boolean),
+  ),
+];
 
-      const therapistIds = [
-        ...new Set(
-          (appointmentsResult.data || [])
-            .map((appointment) => appointment.therapist_id)
-            .filter(Boolean)
-        ),
-      ];
+// Fetch therapist names
+const therapistsResponse = therapistIds.length
+  ? await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', therapistIds)
+  : { data: [] };
 
-      // Fetch names
-      const [patientsResponse, therapistsResponse] =
-        await Promise.all([
-          patientIds.length
-            ? supabase
-                .from('profiles')
-                .select('id, full_name')
-                .in('id', patientIds)
-            : Promise.resolve({ data: [] }),
+const therapistMap = {};
 
-          therapistIds.length
-            ? supabase
-                .from('profiles')
-                .select('id, full_name')
-                .in('id', therapistIds)
-            : Promise.resolve({ data: [] }),
-        ]);
+(therapistsResponse.data || []).forEach((therapist) => {
+  therapistMap[therapist.id] = therapist.full_name;
+});
 
-      const patientMap = {};
+// Merge appointment data
+const mergedAppointments = (appointmentsResult.data || []).map(
+  (appointment) => ({
+    ...appointment,
+    patientName:
+      appointment.patients?.name || 'Unknown patient',
+    therapistName:
+      therapistMap[appointment.therapist_id] || 'Unknown therapist',
+  }),
+);
 
-      (patientsResponse.data || []).forEach((patient) => {
-        patientMap[patient.id] = patient.full_name;
-      });
-
-      const therapistMap = {};
-
-      (therapistsResponse.data || []).forEach((therapist) => {
-        therapistMap[therapist.id] = therapist.full_name;
-      });
-
-      const mergedAppointments = (
-        appointmentsResult.data || []
-      ).map((appointment) => ({
-        ...appointment,
-        patientName:
-          patientMap[appointment.patient_id] ||
-          'Unknown patient',
-        therapistName:
-          therapistMap[appointment.therapist_id] ||
-          'Unknown therapist',
-      }));
-
-      setAppointments(mergedAppointments);
+setAppointments(mergedAppointments);
       setLoading(false);
     }
 
@@ -174,7 +143,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-
       {/* Header */}
       <div>
         <h1
@@ -184,17 +152,13 @@ export default function Dashboard() {
           Admin Dashboard
         </h1>
 
-        <p
-          className="text-sm mt-1"
-          style={{ color: C.muted }}
-        >
+        <p className="text-sm mt-1" style={{ color: C.muted }}>
           Here's what's happening across your clinic today.
         </p>
       </div>
 
       {/* Stats */}
       <div className="flex gap-4">
-
         <StatCard
           icon={Users}
           iconBg="#E1F0EA"
@@ -234,7 +198,6 @@ export default function Dashboard() {
           sub="Currently active"
           subColor="#9A8158"
         />
-
       </div>
 
       {/* Today's appointments */}
@@ -257,10 +220,7 @@ export default function Dashboard() {
               Today's appointments
             </p>
 
-            <p
-              className="text-xs mt-1"
-              style={{ color: C.muted }}
-            >
+            <p className="text-xs mt-1" style={{ color: C.muted }}>
               {appointments.length} appointment
               {appointments.length !== 1 ? 's' : ''} scheduled
             </p>
@@ -269,16 +229,9 @@ export default function Dashboard() {
 
         {appointments.length === 0 ? (
           <div className="py-8 text-center">
-            <Calendar
-              size={28}
-              className="mx-auto"
-              color={C.muted}
-            />
+            <Calendar size={28} className="mx-auto" color={C.muted} />
 
-            <p
-              className="text-sm mt-3"
-              style={{ color: C.muted }}
-            >
+            <p className="text-sm mt-3" style={{ color: C.muted }}>
               No appointments scheduled for today.
             </p>
           </div>
@@ -289,10 +242,7 @@ export default function Dashboard() {
                 key={appointment.id}
                 className="flex items-center gap-4 py-3"
                 style={{
-                  borderTop:
-                    index > 0
-                      ? `1px solid ${C.border}`
-                      : 'none',
+                  borderTop: index > 0 ? `1px solid ${C.border}` : 'none',
                 }}
               >
                 {/* Time */}
@@ -300,8 +250,7 @@ export default function Dashboard() {
                   className="w-20 shrink-0 text-sm"
                   style={{
                     color: C.ink,
-                    fontFamily:
-                      "'IBM Plex Mono', monospace",
+                    fontFamily: "'IBM Plex Mono', monospace",
                     fontWeight: 500,
                   }}
                 >
@@ -325,25 +274,17 @@ export default function Dashboard() {
                     style={{ color: C.muted }}
                   >
                     {appointment.type || 'Appointment'}
-                    {appointment.condition
-                      ? ` · ${appointment.condition}`
-                      : ''}
+                    {appointment.condition ? ` · ${appointment.condition}` : ''}
                   </p>
                 </div>
 
                 {/* Therapist */}
                 <div className="w-40 min-w-0">
-                  <p
-                    className="text-xs"
-                    style={{ color: C.muted }}
-                  >
+                  <p className="text-xs" style={{ color: C.muted }}>
                     Therapist
                   </p>
 
-                  <p
-                    className="text-sm truncate"
-                    style={{ color: C.ink }}
-                  >
+                  <p className="text-sm truncate" style={{ color: C.ink }}>
                     {appointment.therapistName}
                   </p>
                 </div>
@@ -355,17 +296,15 @@ export default function Dashboard() {
                     background:
                       appointment.status === 'Confirmed'
                         ? '#E1F0EA'
-                        : appointment.status ===
-                          'Pending'
-                        ? '#FBEEE0'
-                        : '#EAF1F0',
+                        : appointment.status === 'Pending'
+                          ? '#FBEEE0'
+                          : '#EAF1F0',
                     color:
                       appointment.status === 'Confirmed'
                         ? C.primary
-                        : appointment.status ===
-                          'Pending'
-                        ? '#9A6423'
-                        : C.primaryLight,
+                        : appointment.status === 'Pending'
+                          ? '#9A6423'
+                          : C.primaryLight,
                     fontWeight: 500,
                   }}
                 >
@@ -376,7 +315,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-
     </div>
   );
 }

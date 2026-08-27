@@ -7,8 +7,8 @@ import { UserPlus } from 'lucide-react';
 const links = [
   { to: '/admin/dashboard', icon: Home, label: 'Dashboard' },
   { to: '/admin/users', icon: Users, label: 'Users' },
+  { to: '/admin/staff', icon: UserPlus, label: 'Staff' },
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
-  { to: '/admin/staff', icon: UserPlus, label: 'Add staff' },
 ];
 
 export default function AdminLayout() {
