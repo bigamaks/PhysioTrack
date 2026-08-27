@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X, TrendingDown } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 function painColor(pain) {
   if (pain <= 3) return { bg: '#E1F0EA', text: '#1F4E4A' };
@@ -7,29 +9,61 @@ function painColor(pain) {
   return { bg: '#FBEAE5', text: '#D96B54' };
 }
 
-const initialLogs = [
-  { date: 'Aug 4, 2026', pain: 3, area: 'Lower back', note: 'Mild stiffness in the morning, eased after stretching' },
-  { date: 'Aug 2, 2026', pain: 4, area: 'Lower back', note: 'Slight discomfort after sitting for long periods' },
-  { date: 'Jul 30, 2026', pain: 5, area: 'Lower back', note: 'Noticeable pain during pelvic tilts' },
-  { date: 'Jul 27, 2026', pain: 6, area: 'Lower back · Left hip', note: 'Sharper pain when bending forward' },
-];
-
 export default function Symptoms() {
-  const [logs, setLogs] = useState(initialLogs);
+  const { session } = useAuth();
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [pain, setPain] = useState(5);
   const [area, setArea] = useState('');
   const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e) {
+  useEffect(() => {
+    async function fetchLogs() {
+      const { data, error } = await supabase
+        .from('symptom_logs')
+        .select('id, pain_level, area, note, logged_at')
+        .order('logged_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching symptom logs:', error);
+      } else {
+        setLogs(data);
+      }
+      setLoading(false);
+    }
+    fetchLogs();
+  }, []);
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    const newLog = { date: 'Today', pain, area: area || 'Lower back', note };
-    setLogs([newLog, ...logs]);
-    setPain(5);
-    setArea('');
-    setNote('');
-    setShowForm(false);
+    setSubmitting(true);
+
+    const { data, error } = await supabase
+      .from('symptom_logs')
+      .insert({
+        patient_id: session.user.id,
+        pain_level: pain,
+        area: area || 'Lower back',
+        note,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving symptom log:', error);
+    } else {
+      setLogs([data, ...logs]);
+      setPain(5);
+      setArea('');
+      setNote('');
+      setShowForm(false);
+    }
+    setSubmitting(false);
   }
+
+  if (loading) return <div className="text-muted">Loading...</div>;
 
   return (
     <div className="flex flex-col gap-6">
@@ -97,8 +131,8 @@ export default function Symptoms() {
             />
           </div>
 
-          <button type="submit" className="self-start px-4 py-2.5 rounded-lg text-sm font-medium bg-primary text-white">
-            Save entry
+          <button type="submit" disabled={submitting} className="self-start px-4 py-2.5 rounded-lg text-sm font-medium bg-primary text-white">
+            {submitting ? 'Saving...' : 'Save entry'}
           </button>
         </form>
       )}
@@ -108,11 +142,15 @@ export default function Symptoms() {
           <TrendingDown size={16} color="#7FA893" />
           <p className="text-sm font-medium text-ink">History</p>
         </div>
-        {logs.map((log, i) => (
-          <div key={i} className={`flex items-start gap-4 py-3 ${i > 0 ? 'border-t border-[#E4E9E8]' : ''}`}>
-            <span className="text-xs font-mono w-20 flex-shrink-0 mt-1 text-muted">{log.date}</span>
-            <span className="text-xs px-2 py-1 rounded-full font-mono font-medium flex-shrink-0" style={{ background: painColor(log.pain).bg, color: painColor(log.pain).text }}>
-              {log.pain}/10
+        {logs.length === 0 ? (
+          <p className="text-sm text-muted py-4 text-center">No symptoms logged yet.</p>
+        ) : logs.map((log, i) => (
+          <div key={log.id} className={`flex items-start gap-4 py-3 ${i > 0 ? 'border-t border-[#E4E9E8]' : ''}`}>
+            <span className="text-xs font-mono w-24 shrink-0 mt-1 text-muted">
+              {new Date(log.logged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+            <span className="text-xs px-2 py-1 rounded-full font-mono font-medium shrink-0" style={{ background: painColor(log.pain_level).bg, color: painColor(log.pain_level).text }}>
+              {log.pain_level}/10
             </span>
             <div className="flex-1">
               <p className="text-sm font-medium text-ink">{log.area}</p>

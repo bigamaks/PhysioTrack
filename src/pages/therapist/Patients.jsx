@@ -1,7 +1,7 @@
 import {
   Search,
-  ChevronRight,
-  ChevronLeft,
+  // ChevronRight,
+  // ChevronLeft,
   UserPlus,
   Users,
   UserCheck,
@@ -81,6 +81,35 @@ function getTint(name) {
   return AVATAR_COLORS[index];
 }
 
+function parseAppointmentDateTime(date, time) {
+  if (!date || !time) return null;
+
+  const normalizedTime = time.trim().toUpperCase();
+
+  const match = normalizedTime.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/);
+
+  if (!match) {
+    return new Date(`${date}T00:00:00`);
+  }
+
+  let [, hour, minute = '00', period] = match;
+
+  hour = Number(hour);
+  minute = Number(minute);
+
+  if (period === 'PM' && hour !== 12) {
+    hour += 12;
+  }
+
+  if (period === 'AM' && hour === 12) {
+    hour = 0;
+  }
+
+  return new Date(
+    `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`,
+  );
+}
+
 function FilterChip({ label }) {
   return (
     <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-ink bg-white border border-[#E4E9E8] cursor-pointer">
@@ -102,103 +131,264 @@ function FilterChip({ label }) {
 export default function Patients() {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     async function fetchPatients() {
-      const { data, error } = await supabase.from('patients').select('*');
-      if (error) {
-        console.error('Error fetching patients:', error);
-      } else {
-        setPatients(data);
-      }
-      setLoading(false);
+      setLoading(true);
+
+      try {
+        // Fetch patients
+        const { data: patientData, error: patientError } = await supabase
+          .from('patients')
+          .select(
+            `
+          id,
+          created_at,
+          name,
+          age,
+          gender,
+          condition,
+          status,
+          last_visit,
+          profile_id
+        `,
+          )
+          .order('created_at', { ascending: false });
+
+        if (patientError) {
+          console.error('Error fetching patients:', patientError);
+          setPatients([]);
+          return;
+        }
+
+        // Fetch appointments
+        const { data: appointmentData, error: appointmentError } =
+          await supabase
+            .from('appointments')
+            .select(
+              `
+            id,
+            patient_id,
+            date,
+            time,
+            status
+          `,
+            )
+            .order('date', { ascending: true });
+
+        if (appointmentError) {
+          console.error('Error fetching appointments:', appointmentError);
+        }
+
+        const now = new Date();
+
+// Build patient appointment lookups
+const nextAppointmentMap = {};
+const lastVisitMap = {};
+
+(appointmentData || []).forEach((appointment) => {
+  if (!appointment.patient_id) return;
+
+  if (appointment.status?.toLowerCase() === 'cancelled') {
+    return;
+  }
+
+  const appointmentDateTime = parseAppointmentDateTime(
+    appointment.date,
+    appointment.time
+  );
+
+  if (!appointmentDateTime) return;
+
+  // Upcoming appointment
+  if (appointmentDateTime >= now) {
+    const currentNext = nextAppointmentMap[appointment.patient_id];
+
+    if (
+      !currentNext ||
+      appointmentDateTime <
+        parseAppointmentDateTime(
+          currentNext.date,
+          currentNext.time
+        )
+    ) {
+      nextAppointmentMap[appointment.patient_id] = appointment;
     }
+  }
+
+  // Most recent past appointment
+  if (appointmentDateTime < now) {
+    const currentLast = lastVisitMap[appointment.patient_id];
+
+    if (
+      !currentLast ||
+      appointmentDateTime >
+        parseAppointmentDateTime(
+          currentLast.date,
+          currentLast.time
+        )
+    ) {
+      lastVisitMap[appointment.patient_id] = appointment;
+    }
+  }
+});
+
+const mergedPatients = (patientData || []).map((patient) => ({
+  ...patient,
+
+  nextAppointment:
+    nextAppointmentMap[patient.id] || null,
+
+  lastVisit:
+    lastVisitMap[patient.id] || null,
+}));
+
+setPatients(mergedPatients);
+
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        setPatients([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     fetchPatients();
   }, []);
 
-  if (loading) return <div className="p-6 text-muted">Loading patients...</div>;
+  const filteredPatients = patients.filter((patient) =>
+    patient.name?.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const totalPatients = patients.length;
+
+  const activePatients = patients.filter(
+    (patient) => patient.status?.toLowerCase() === 'active',
+  ).length;
+
+  const dischargedPatients = patients.filter(
+    (patient) => patient.status?.toLowerCase() === 'discharged',
+  ).length;
+
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const newThisMonth = patients.filter((patient) => {
+    if (!patient.created_at) return false;
+
+    const createdDate = new Date(patient.created_at);
+
+    return (
+      createdDate.getMonth() === currentMonth &&
+      createdDate.getFullYear() === currentYear
+    );
+  }).length;
+
+  if (loading) {
+    return <div className="p-6 text-sm text-muted">Loading patients...</div>;
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-display font-semibold text-2xl text-ink">
             Patients
           </h1>
+
           <p className="text-sm mt-1 text-muted">
             Manage patient records and track their treatment journey.
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm text-white font-medium bg-primary">
-          {/* <UserPlus size={16} /> Add new patient */}
-          <Link
-            to="/therapist/patients/add"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm text-white font-medium bg-primary"
-          >
-            <UserPlus size={16} /> Add new patient
-          </Link>
-        </button>
+
+        <Link
+          to="/therapist/patients/add"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm text-white font-medium bg-primary"
+        >
+          <UserPlus size={16} />
+          Add new patient
+        </Link>
       </div>
 
+      {/* Stats */}
       <div className="flex gap-4">
         <StatCard
           icon={Users}
           iconBg="#E1F0EA"
           iconColor="#1F4E4A"
           label="Total patients"
-          value="248"
-          sub="↑ 12% from last month"
-          subColor="#1F4E4A"
+          value={totalPatients}
         />
+
         <StatCard
           icon={UserCheck}
           iconBg="#EAF1F0"
           iconColor="#2F6E67"
           label="Active patients"
-          value="189"
-          sub="↑ 8% from last month"
-          subColor="#2F6E67"
+          value={activePatients}
         />
+
         <StatCard
           icon={CalendarPlus}
           iconBg="#FBEEE0"
           iconColor="#E2984F"
           label="New this month"
-          value="18"
-          sub="↑ 5% from last month"
-          subColor="#E2984F"
+          value={newThisMonth}
         />
+
         <StatCard
           icon={PackageCheck}
           iconBg="#F1F1F0"
           iconColor="#5C6B6E"
           label="Discharged"
-          value="59"
-          sub="↑ 10% from last month"
-          subColor="#5C6B6E"
+          value={dischargedPatients}
         />
       </div>
 
+      {/* Search / Filters */}
       <div className="flex items-center gap-3 rounded-xl p-3 bg-white border border-[#E4E9E8]">
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1 bg-bg">
           <Search size={16} className="text-muted" />
-          <span className="text-sm text-muted">Search patients...</span>
+
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search patients..."
+            className="w-full bg-transparent outline-none text-sm text-ink placeholder:text-muted"
+          />
         </div>
+
         <FilterChip label="All status" />
         <FilterChip label="All conditions" />
+
         <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-ink border border-[#E4E9E8] cursor-pointer">
-          <SlidersHorizontal size={14} /> More filters
+          <SlidersHorizontal size={14} />
+          More filters
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted cursor-pointer">
-          <RotateCcw size={14} /> Reset
-        </div>
-        <div
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer"
+
+        <button
+          type="button"
+          onClick={() => setSearch('')}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-muted cursor-pointer"
+        >
+          <RotateCcw size={14} />
+          Reset
+        </button>
+
+        <button
+          type="button"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
           style={{ background: '#E1F0EA', color: '#1F4E4A' }}
         >
-          <Download size={14} /> Export
-        </div>
+          <Download size={14} />
+          Export
+        </button>
       </div>
 
+      {/* Patients Table */}
       <div className="rounded-xl overflow-hidden bg-white border border-[#E4E9E8]">
         <table className="w-full text-sm">
           <thead>
@@ -206,106 +396,139 @@ export default function Patients() {
               {[
                 'Patient',
                 'ID',
-                'Contact',
                 'Condition',
                 'Status',
                 'Last visit',
                 'Next appointment',
                 'Actions',
-              ].map((h, i) => (
+              ].map((heading) => (
                 <th
-                  key={i}
+                  key={heading}
                   className="text-left px-4 py-3 text-xs text-muted font-medium"
                 >
-                  {h}
+                  {heading}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
-            {patients.map((p, i) => (
-              <tr key={i} className={i > 0 ? 'border-t border-[#E4E9E8]' : ''}>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <Avatar
-                      initials={p.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')}
-                      tint={getTint(p.name)}
-                    />
-                    <div>
-                      <p className="text-ink font-medium">{p.name}</p>
-                      <p className="text-xs text-muted">
-                        {p.age} · {p.gender}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted font-mono text-[13px]">
-                  {p.id}
-                </td>
-                <td className="px-4 py-3 text-muted text-[13px]">{p.phone}</td>
-                <td className="px-4 py-3 text-muted">{p.condition}</td>
-                <td className="px-4 py-3">
-                  <StatusPill status={p.status} />
-                </td>
-                <td className="px-4 py-3 text-muted font-mono text-[13px]">
-                  {p.last_visit}
-                </td>
-                <td
-                  className="px-4 py-3 text-[13px]"
-                  style={{
-                    color: p.next_appointment === '—' ? '#5C6B6E' : '#2F6E67',
-                  }}
-                >
-                  {p.next_appointment}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer border border-[#E4E9E8]">
-                      {/* <Eye size={14} className="text-muted" /> */}
 
-                      <Link
-                        to={`/therapist/patients/${p.id}`}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]"
-                      >
-                        <Eye size={14} className="text-muted" />
-                      </Link>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer border border-[#E4E9E8]">
-                      <MoreHorizontal size={14} className="text-muted" />
-                    </div>
-                  </div>
+          <tbody>
+            {filteredPatients.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={7}
+                  className="px-4 py-8 text-center text-sm text-muted"
+                >
+                  {search ? 'No patients found.' : 'No patients yet.'}
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredPatients.map((patient, index) => {
+                const status =
+                  patient.status?.charAt(0).toUpperCase() +
+                    patient.status?.slice(1).toLowerCase() || 'Active';
+
+                return (
+                  <tr
+                    key={patient.id}
+                    className={index > 0 ? 'border-t border-[#E4E9E8]' : ''}
+                  >
+                    {/* Patient */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar
+                          initials={
+                            patient.name
+                              ?.split(' ')
+                              .filter(Boolean)
+                              .map((name) => name[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase() || '?'
+                          }
+                          tint={getTint(patient.name || '')}
+                        />
+
+                        <div>
+                          <p className="text-ink font-medium">
+                            {patient.name || 'Unnamed patient'}
+                          </p>
+
+                          <p className="text-xs text-muted">
+                            {patient.age || '—'} · {patient.gender || '—'}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* ID */}
+                    <td className="px-4 py-3 text-muted font-mono text-[13px]">
+                      PT-{String(patient.id).padStart(4, '0')}
+                    </td>
+
+                    {/* Condition */}
+                    <td className="px-4 py-3 text-muted">
+                      {patient.condition || '—'}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3">
+                      <StatusPill status={status} />
+                    </td>
+
+                    {/* Last Visit */}
+                    <td className="px-4 py-3 text-muted font-mono text-[13px]">
+                      {patient.lastVisit?.date || '—'}
+                    </td>
+
+                    {/* Next Appointment */}
+                    <td
+                      className="px-4 py-3 text-[13px]"
+                      style={{
+                        color: patient.nextAppointment ? '#2F6E67' : '#5C6B6E',
+                      }}
+                    >
+                      {patient.nextAppointment ? (
+                        <>
+                          {patient.nextAppointment.date} ·{' '}
+                          {patient.nextAppointment.time}
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/therapist/patients/${patient.id}`}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]"
+                        >
+                          <Eye size={14} className="text-muted" />
+                        </Link>
+
+                        <button
+                          type="button"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]"
+                        >
+                          <MoreHorizontal size={14} className="text-muted" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
 
+      {/* Results count */}
       <div className="flex items-center justify-between text-sm text-muted">
-        <span>Showing 1 to 7 of 248 patients</span>
-        <div className="flex items-center gap-1.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]">
-            <ChevronLeft size={14} />
-          </div>
-          {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center ${n === 1 ? 'bg-primary text-white' : 'border border-[#E4E9E8] text-ink'}`}
-            >
-              {n}
-            </div>
-          ))}
-          <span>...</span>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]">
-            36
-          </div>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#E4E9E8]">
-            <ChevronRight size={14} />
-          </div>
-        </div>
+        <span>
+          Showing {filteredPatients.length} of {patients.length} patients
+        </span>
       </div>
     </div>
   );

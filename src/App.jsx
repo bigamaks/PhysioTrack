@@ -17,6 +17,9 @@ import PatientProfile from './pages/therapist/PatientProfile'
 import AddPatient from './pages/therapist/AddPatient';
 import Progress from './pages/therapist/Progress'
 import Settings from './pages/therapist/Settings'
+import BookAppointment from './pages/therapist/BookAppointment';
+import AssignExercise from './pages/therapist/AssignExercise'
+import NewAssessment from './pages/therapist/NewAssessment';
 
 
 import PatientDashboard from './pages/patient/Dashboard'
@@ -38,25 +41,34 @@ function App() {
         <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route
+  path="/test-book"
+  element={<BookAppointment />}
+/>
+<Route
+  path="/therapist"
+  element={
+    <ProtectedRoute allowedRoles={['therapist']}>
+      <TherapistLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route path="dashboard" element={<TherapistDashboard />} />
+  <Route path="patients" element={<Patients />} />
+  <Route path="patients/add" element={<AddPatient />} />
+  <Route path="patients/:id" element={<PatientProfile />} />
+  <Route path="patients/:id/assign-exercise" element={<AssignExercise />} />
 
-        <Route path="/therapist" element={
-          <ProtectedRoute allowedRoles={['therapist']}>
-            <TherapistLayout />
-          </ProtectedRoute>
-          
-          
-          }>
-          <Route path="dashboard" element={<TherapistDashboard />} />
-          <Route path="patients" element={<Patients />} />
-          <Route path="patients/:id" element={<PatientProfile />} />
-          <Route path="appointments" element={<TherapistAppointments />} />
-          <Route path="assessments" element={<Assessments />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="patients/:id" element={<PatientProfile />} />
-          <Route path="patients/add" element={<AddPatient />} />
-          <Route path="progress" element={<Progress />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
+  <Route path="appointments" element={<TherapistAppointments />} />
+  <Route path="appointments/book" element={<BookAppointment />} />
+
+  <Route path="assessments" element={<Assessments />} />
+  <Route path="assessments/new" element={<NewAssessment />} />
+
+  <Route path="progress" element={<Progress />} />
+  <Route path="reports" element={<Reports />} />
+  <Route path="settings" element={<Settings />} />
+</Route>
 
         <Route path="/patient" element={
           <ProtectedRoute allowedRoles={['patient']}>
